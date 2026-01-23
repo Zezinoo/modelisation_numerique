@@ -227,3 +227,4 @@ e = Exercice()
 if __name__ == "__main__":
     e = Exercice()
     partie3(e)
+    #245 tau
