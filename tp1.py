@@ -169,6 +169,44 @@ class Exercice():
         total = time.time() - start
 
         return I , total
+    
+
+    def ex_regression(self,p,data):
+        from functools import reduce
+        def sum_x_of_k_degree(x_arr , k):
+            x_arr = [x**k for x in x_arr]
+            sum = reduce(lambda x ,y : x+y , x_arr)
+            return sum
+
+
+        def Reg_Poly(data : np.ndarray,p):
+            n,_ = data.shape
+            x_arr = data[:,0]
+            y_arr = data[:,1]
+            S = np.array(
+                [
+                    [sum_x_of_k_degree(x_arr , j) for j in range(i,i+p+1)]
+                    for i in range(p+1)]
+            )
+            W = np.array(
+                [reduce(lambda x,y : x +y , np.multiply(x_arr**k , y_arr)) for k in range(p+1) ]
+            )
+            W = W[:,np.newaxis] 
+
+            C = np.dot(np.linalg.inv(S) , W)
+
+            return C
+        
+        def Poly(coefficients,p,data):
+            x_arr = data[:,0]
+            y_values = np.array([coefficients[i][0]*x_arr**i for i in range(p+1)]).sum(axis=0)
+            return y_values
+        
+        coefficients = Reg_Poly(data , p)
+        adjustment = Poly(coefficients , p , data)
+        
+        return adjustment
+
 
 def partie_1(e):
     a = 1
@@ -186,7 +224,6 @@ def partie_1(e):
 
     print(f"diff_time {td - tn}" )
     
-
 def partie_2(e):
     N = [int(10**i) for i in range(1,6)]
     a = 0
@@ -272,52 +309,6 @@ def partie_2(e):
 
     print(tau)
 
-
-if __name__ == "__main__":
-
-    e = Exercice()
-    partie_1(e)
-    partie_2(e)
-
-       
-
-    def ex_regression(self,p,data):
-        from functools import reduce
-        def sum_x_of_k_degree(x_arr , k):
-            x_arr = [x**k for x in x_arr]
-            sum = reduce(lambda x ,y : x+y , x_arr)
-            return sum
-
-
-        def Reg_Poly(data : np.ndarray,p):
-            n,_ = data.shape
-            x_arr = data[:,0]
-            y_arr = data[:,1]
-            S = np.array(
-                [
-                    [sum_x_of_k_degree(x_arr , j) for j in range(i,i+p+1)]
-                    for i in range(p+1)]
-            )
-            W = np.array(
-                [reduce(lambda x,y : x +y , np.multiply(x_arr**k , y_arr)) for k in range(p+1) ]
-            )
-            W = W[:,np.newaxis] 
-
-            C = np.dot(np.linalg.inv(S) , W)
-
-            return C
-        
-        def Poly(coefficients,p,data):
-            x_arr = data[:,0]
-            y_values = np.array([coefficients[i][0]*x_arr**i for i in range(p+1)]).sum(axis=0)
-            return y_values
-        
-        coefficients = Reg_Poly(data , p)
-        adjustment = Poly(coefficients , p , data)
-        
-        return adjustment
-
-
 def partie3(e):
     data = np.array([
     [0,   4.00],
@@ -345,9 +336,15 @@ def partie3(e):
     plt.legend()
     plt.show()
 
-e = Exercice()
 
 if __name__ == "__main__":
+
     e = Exercice()
+    partie_1(e)
+    partie_2(e)
     partie3(e)
-    #245 tau
+
+       
+
+
+
