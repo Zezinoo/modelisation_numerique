@@ -134,10 +134,10 @@ class MomentOfInertia:
         in_horizontal = lambda x , y : abs(y) <= self.a
         in_vertical = lambda x , y : abs(x) <= self.a
 
-        return not_in_inner(x,y) or in_horizontal(x,y) or in_vertical(x,y)
+        return not_in_inner(x,y) and (in_horizontal(x,y) or in_vertical(x,y))
     
     def is_in_figure(self , x , y):
-        return self.is_in_center( x,y) or self.is_in_center( x,y)
+        return self.is_in_center( x,y) or self.is_in_outside_circle( x,y)
     
     def pho(self , x ,y ):
         return 1 if self.is_in_figure(x,y) else 0
@@ -145,15 +145,60 @@ class MomentOfInertia:
     def g(self , x,y):
         return(x**2 + y**2)*self.pho(x,y)
     
-    def integrationMC(self , f, n , np , density = None , cdf = None):
-        sample = np.random.uniform(low = self.low , high = self.high , size = (2,n))
-        pass
+    def integrationMC(self , f, n , n_pixels , density = None , inverse_cdf = None):
+        sample = np.random.uniform(low = self.low , high = self.high , size = (n,2))
+        if inverse_cdf is not None:
+            sample =  inverse_cdf(sample)
+        if density is None:
+            density = lambda x , y : 1/(self.high - self.low)**2
+        
+        def h(x,y):
+            return f(x,y) / density(x,y)
+        
+        integral = np.array([h(x,y) for x,y in sample]).sum()/n
 
+        integral_h_squared = np.array([h(x,y)**2 for x,y in sample]).sum()/n
+        variance = integral_h_squared - integral**2
 
+        grid = self.create_image_grid( n_pixels)
 
+        grid = self.create_image_grid(n_pixels)
+
+        for x, y in sample:
+            x_p, y_p = self.to_pixel_coords((x, y), n_pixels)
+            grid[y_p, x_p] = 0
+
+        plt.imshow(grid, cmap='gray', origin='lower')
+        plt.show()
+
+    def create_image_grid(self, n_pixels):
+        grid = np.zeros((n_pixels, n_pixels), dtype=float)
+
+        x_coords = np.linspace(-self.R3, self.R3, n_pixels)
+        y_coords = np.linspace(-self.R3, self.R3, n_pixels)
+        A, B = np.meshgrid(x_coords, y_coords, indexing='xy')
+
+        for x, y in np.column_stack([A.ravel(), B.ravel()]):
+            x_p, y_p = self.to_pixel_coords((x, y), n_pixels)
+            grid[y_p, x_p] = self.pho(x, y)
+
+        return grid
+
+    def to_pixel_coords(self, world_coords, n_pixels):
+        x, y = world_coords
+
+        # map [-R3, R3] -> [0, n_pixels-1]
+        x_p = int(round((x + self.R3) / (2 * self.R3) * (n_pixels - 1)))
+        y_p = int(round((y + self.R3) / (2 * self.R3) * (n_pixels - 1)))
+
+        return x_p, y_p
 
 
 def partie2(e):
+    m = MomentOfInertia(0.4 , 0.1 , 0.8 , 1)
+    iters = [int(10**i) for i in range(3,6)]
+    for N in iters:
+        m.integrationMC(m.g , N , 500)
     pass
 
 
