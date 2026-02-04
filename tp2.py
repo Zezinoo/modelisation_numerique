@@ -166,9 +166,9 @@ class MomentOfInertia:
 
         for x, y in sample:
             x_p, y_p = self.to_pixel_coords((x, y), n_pixels)
-            grid[y_p, x_p] = 0
+            grid[y_p, x_p] = 0.8
 
-        plt.imshow(grid, cmap='gray', origin='lower')
+        plt.imshow(grid, cmap='inferno', origin='lower')
         plt.show()
 
     def create_image_grid(self, n_pixels):
@@ -180,7 +180,7 @@ class MomentOfInertia:
 
         for x, y in np.column_stack([A.ravel(), B.ravel()]):
             x_p, y_p = self.to_pixel_coords((x, y), n_pixels)
-            grid[y_p, x_p] = self.pho(x, y)
+            grid[y_p, x_p] = 0 if self.pho(x, y) == 1 else 1
 
         return grid
 
