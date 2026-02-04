@@ -171,6 +171,7 @@ class MomentOfInertia:
             grid[y_p, x_p] = 0
 
         plt.imshow(grid, cmap='gray', origin='lower' ) #label = rf"$J_z = {integral}$ , $\sigma^2 = {variance}$")
+        plt.title(rf"$J_z = {integral:.3f}$ , $\sigma^2 = {variance:.3f}$ , N = {n}")
         plt.show()
 
         intervale_confiance = 1.96 * (np.sqrt(variance))/np.sqrt(n)
@@ -202,7 +203,8 @@ class MomentOfInertia:
             x_p, y_p = self.to_pixel_coords((x, y), n_pixels)
             grid[y_p, x_p] = 0
 
-        plt.imshow(grid, cmap='gray', origin='lower' ) #label = rf"$J_z = {integral}$ , $\sigma^2 = {variance}$")
+        plt.imshow(grid, cmap='gray', origin='lower' )
+        plt.title(rf"$J_z = {integral:.3f}$ , $\sigma^2 = {variance:.3f}$ , N = {n}")
         plt.show()
 
         intervale_confiance = 1.96 * (np.sqrt(variance))/np.sqrt(n)
@@ -275,5 +277,5 @@ def partie2(e):
 
 if __name__ == "__main__":
     e = Exercice(low = 0 , high= 1 )
-    partie1(e)
+    #partie1(e)
     partie2(e)
