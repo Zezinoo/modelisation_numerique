@@ -78,10 +78,9 @@ def EulerN2(P940, dt, tmax):
 # Evolution de la puissance de sortie du laser en régime transitoire
 
 def exact_solution(p940 , t):
-    #Sort out the constant values in the exponential solution
+    #Solve the ODE dn2/dt = k*(nt-n2) - 1/tau
     k = Flux(p940 , 940e-9) * sea940
-    exponenent = (-k*tau*t -t)/tau
-    return -(np.exp(exponenent))/(k*tau+1) + (k*Nt*tau)/(k*tau + 1) 
+    return (k*Nt*tau)/(k*tau + 1) * (1 - np.exp(-(k + 1/tau)*t))
 
 def EulerLaser(P940, dt, tmax):
     pass
