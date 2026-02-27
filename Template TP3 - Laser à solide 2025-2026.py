@@ -4,7 +4,6 @@ TP 3 : Modélisation d'un laser à solide en régime continu et impulsionnel
 
 """
 
-from numpy import *
 import matplotlib.pyplot as plt
 import time
 import numpy as np
@@ -33,7 +32,7 @@ fes = 0.01                                          # Fraction d'émission spont
 
 QS = 1                                              # Transmission du modulateur de perte intra-cavité : QS = 0 ou 1
 
-gamma = alpha - log(R1*R2)/(2*L)                    # Coeff de perte total de la cavité en cm-1
+gamma = alpha - np.log(R1*R2)/(2*L)                    # Coeff de perte total de la cavité en cm-1
 
 
 
@@ -52,8 +51,11 @@ def f1(y1, y2, F940) :
 
 # Définition f(x,y) = f2(y1, y2) pour le calcul de Flux1030 avec y1 = N2 et y2 = Flux1030
 
-def f2(y1,y2) :
-    pass
+def f2(y1,y2,F940,beta = 1e-2) :
+    #Dphi1030/dt
+    eq = y2*(see1030*y1 - sea1030*(Nt - y1))*c*100/n - gamma*y2*c*100/n + beta*y1/tau
+    #Multiplying by 100 to turn lightspeed units into cm to be in accordance with other values
+    return eq
 
 # Evolution de la population N2 en régime transitoire
 
@@ -69,28 +71,87 @@ def EulerN2(P940, dt, tmax):
 
         yn1 = yn + dt*f1(yn ,0 ,flux940)
         yn = yn1
-        if yn < 1e10:
-            pass
         t = t + dt
         evolution_N2.append((t , yn))
     return evolution_N2
-
-# Evolution de la puissance de sortie du laser en régime transitoire
 
 def exact_solution(p940 , t):
     #Solve the ODE dn2/dt = k*(nt-n2) - 1/tau
     k = Flux(p940 , 940e-9) * sea940
     return (k*Nt*tau)/(k*tau + 1) * (1 - np.exp(-(k + 1/tau)*t))
 
+# Evolution de la puissance de sortie du laser en régime transitoire
+
+
 def EulerLaser(P940, dt, tmax):
-    pass
+    flux940 = Flux(P940 , 940e-9)
+    t = 0
+    evolution_flux = []
+    yn = 0 # LaserFlux starts at 1030
+    xn = 0 # N2 starts at 0
+    while t < tmax:
+        xn1 = xn + dt*f1(xn , yn , flux940)
+        yn1 = yn + dt*f2(xn1 , yn , flux940)
+        xn = xn1
+        yn = yn1
+        t = t + dt
+        evolution_flux.append((t,yn))
+    return evolution_flux
+
+
+def RungeKutta(P940 , dt , tmax):
+    flux940 = Flux(P940 , 940e-9)
+    t = 0
+    evolution_flux = []
+    yn = 0 # LaserFlux starts at 1030
+    xn = 0 # N2 starts at 0
+    while t < tmax:
+        #Solving coupled population equation
+        xn1 = xn + RungeKuttaSteps(f1 , xn , yn , flux940 , dt)
+        yn1 = yn + RungeKuttaSteps(f2 , xn1 , yn , flux940 , dt)
+        xn = xn1
+        yn = yn1
+        t = t + dt
+        evolution_flux.append((t,yn))
+    return evolution_flux
+        
+
+def RungeKuttaSteps(f , x , y , flux940 , dt):
+    k1 = dt*f(x,y,flux940)
+    k2 = dt*f(x + dt/2 , y + k1/2,flux940)
+    k3 = dt*f(x + dt/2 , y + k2/2,flux940)
+    k4 = dt*f(x + dt , y + k3,flux940)
+
+    methodstep = 1/6 * (k1 + 2*k2 + 2*k3 + k4)
+    return methodstep
+
+
+def RungeKuttaQSwitch(P940 , dt , tmax):
+    flux940 = Flux(P940 , 940e-9)
+    t = 0
+    evolution_flux = []
+    yn = 0 # LaserFlux starts at 1030
+    xn = 0 # N2 starts at 0
+    while t < tmax:
+        #Solving coupled population equation
+        xn1 = xn + RungeKuttaSteps(f1 , xn , yn , flux940 , dt)
+        if t <= 40e-6:
+            yn1 = 0
+        else:
+            yn1 = yn + RungeKuttaSteps(f2 , xn1 , yn , flux940 , dt)
+        xn = xn1
+        yn = yn1
+        t = t + dt
+        evolution_flux.append((t,yn))
+    return evolution_flux
+
 
 
 # Fonctions de conversion Flux <-> Puissance
 
-def Flux(P, wl): return P*wl/(pi*r*r*h*c)
+def Flux(P, wl): return P*wl/(np.pi*r*r*h*c)
 
-def Puissance(F, wl): return F*(pi*r*r*h*c)/wl
+def Puissance(F, wl): return F*(np.pi*r*r*h*c)/wl
 
 
 
@@ -122,8 +183,10 @@ if __name__ == "__main__" :
 
     print("Puissance de pompage au seuil =", Pseuil940, "W")
 
+    #Partie B
+
     pumping = np.linspace(0,10,1000)
-    output_powers = [Plaser(p)*(1-R2) for p in pumping]
+    output_powers = [max(Plaser(p)*(1-R2),0) for p in pumping]
 
     plt.plot(pumping , output_powers )
     plt.show()
@@ -137,4 +200,39 @@ if __name__ == "__main__" :
 
     plt.plot(times , population)
     plt.plot(times2,exact)
+    plt.show()  
+
+    #Partie C
+    """
+    results_flux = EulerLaser(P940=50,dt = 100e-11 , tmax = 100e-6) # Divergence with slow steps
+    times = [r[0] for r in results_flux]
+    flux = [r[1] for r in results_flux]
+    print(flux[-1])
+    stationary_flux = Flux(Plaser(50), 1030e-9)
+    #plt.plot(times,flux , label = "euler")
+    plt.plot(times , np.ones_like(times)*stationary_flux)
+    
+
+    runge_kutta_results = RungeKutta(P940 = 50 , dt = 100e-9,tmax=100e-6)
+    times = [r[0] for r in runge_kutta_results]
+    flux = [r[1] for r in runge_kutta_results]
+    print(flux[-1])
+    stationary_flux = Flux(Plaser(50), 1030e-9)
+    plt.plot(times,flux , label = "runge-kutta")
+    #plt.plot(times , np.ones_like(times)*stationary_flux)
+    plt.legend()
     plt.show()
+    """
+    #Runge Kutta accepts slower steps to the order of 100e-11
+
+    #Partie D
+    runge_kutta_results = RungeKuttaQSwitch(P940 = 50 , dt = 1e-12,tmax=100e-6)
+    times = [r[0] for r in runge_kutta_results]
+    flux = [r[1] for r in runge_kutta_results]
+    print(flux[-1])
+    stationary_flux = Flux(Plaser(50), 1030e-9)
+    plt.plot(times,flux , label = "runge-kutta")
+    plt.plot(times , np.ones_like(times)*stationary_flux)
+    plt.legend()
+    plt.show()
+
