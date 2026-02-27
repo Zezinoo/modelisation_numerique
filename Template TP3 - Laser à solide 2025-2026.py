@@ -135,7 +135,7 @@ def RungeKuttaQSwitch(P940 , dt , tmax):
     while t < tmax:
         #Solving coupled population equation
         xn1 = xn + RungeKuttaSteps(f1 , xn , yn , flux940 , dt)
-        if t <= 40e-6:
+        if t < 40e-6:
             yn1 = 0
         else:
             yn1 = yn + RungeKuttaSteps(f2 , xn1 , yn , flux940 , dt)
@@ -153,7 +153,17 @@ def Flux(P, wl): return P*wl/(np.pi*r*r*h*c)
 
 def Puissance(F, wl): return F*(np.pi*r*r*h*c)/wl
 
+def calculateFWHM(array):
+    arr = np.array(array)
+    maximum = np.max(arr)
+    half_max = maximum/2
+    idx_max = np.argmax(arr)
 
+    left_fwhm_idx = np.argmin(np.abs(arr - half_max)[:idx_max])
+    right_fwhm_idx = np.argmin(np.abs(arr - half_max)[idx_max:]) + idx_max
+
+
+    return left_fwhm_idx , right_fwhm_idx , half_max
 
 
 
@@ -189,6 +199,7 @@ if __name__ == "__main__" :
     output_powers = [max(Plaser(p)*(1-R2),0) for p in pumping]
 
     plt.plot(pumping , output_powers )
+    plt.title("Laser Power x Pumping Power")
     plt.show()
 
     results = EulerN2(P940=5 ,dt = 10e-6 , tmax=10e-3)
@@ -198,13 +209,14 @@ if __name__ == "__main__" :
     exact = [exact_solution(5,t) for t in times if t <= 3e-3]
     times2 = [t for t in times if t <= 3e-3]
 
-    plt.plot(times , population)
-    plt.plot(times2,exact)
+    plt.plot(times , population , label = "N2(t)")
+    plt.plot(times2,exact , label = "exact solution")
+    plt.title("N2(t)")
     plt.show()  
 
     #Partie C
-    """
-    results_flux = EulerLaser(P940=50,dt = 100e-11 , tmax = 100e-6) # Divergence with slow steps
+    
+    results_flux = EulerLaser(P940=50,dt = 100e-9 , tmax = 100e-6) # Divergence with slow steps
     times = [r[0] for r in results_flux]
     flux = [r[1] for r in results_flux]
     print(flux[-1])
@@ -213,7 +225,7 @@ if __name__ == "__main__" :
     plt.plot(times , np.ones_like(times)*stationary_flux)
     
 
-    runge_kutta_results = RungeKutta(P940 = 50 , dt = 100e-9,tmax=100e-6)
+    runge_kutta_results = RungeKutta(P940 = 50 , dt = 100e-12,tmax=100e-6)
     times = [r[0] for r in runge_kutta_results]
     flux = [r[1] for r in runge_kutta_results]
     print(flux[-1])
@@ -222,17 +234,21 @@ if __name__ == "__main__" :
     #plt.plot(times , np.ones_like(times)*stationary_flux)
     plt.legend()
     plt.show()
-    """
+    
     #Runge Kutta accepts slower steps to the order of 100e-11
 
     #Partie D
-    runge_kutta_results = RungeKuttaQSwitch(P940 = 50 , dt = 1e-12,tmax=100e-6)
-    times = [r[0] for r in runge_kutta_results]
-    flux = [r[1] for r in runge_kutta_results]
+    runge_kutta_results = RungeKuttaQSwitch(P940 = 50 , dt = 1e-10,tmax=100e-6)
+    times = [r[0] for r in runge_kutta_results if (r[0] >= 40e-6 and r[0] <= 40e-6 + 100e-9 )]
+    flux = [r[1] for r in runge_kutta_results if (r[0] >= 40e-6 and r[0] <= 40e-6 + 100e-9 )]
     print(flux[-1])
     stationary_flux = Flux(Plaser(50), 1030e-9)
     plt.plot(times,flux , label = "runge-kutta")
     plt.plot(times , np.ones_like(times)*stationary_flux)
+    l , r , half_max = calculateFWHM(flux)
+    fwhm = times[r] - times[l]
+    plt.hlines(half_max , times[l] , times[r] , color = "red" , label=f"FWHM = {fwhm:.2e}")
     plt.legend()
     plt.show()
 
+    
