@@ -241,11 +241,13 @@ if __name__ == "__main__" :
     runge_kutta_results = RungeKuttaQSwitch(P940 = 50 , dt = 1e-10,tmax=100e-6)
     times = [r[0] for r in runge_kutta_results if (r[0] >= 40e-6 and r[0] <= 40e-6 + 100e-9 )]
     flux = [r[1] for r in runge_kutta_results if (r[0] >= 40e-6 and r[0] <= 40e-6 + 100e-9 )]
+    power = [Puissance(x , 1030e-9) for x in flux]
     print(flux[-1])
     stationary_flux = Flux(Plaser(50), 1030e-9)
-    plt.plot(times,flux , label = "runge-kutta")
-    plt.plot(times , np.ones_like(times)*stationary_flux)
-    l , r , half_max = calculateFWHM(flux)
+    stationary_power = Plaser(50)
+    plt.plot(times,power , label = "runge-kutta")
+    plt.plot(times , np.ones_like(times)*stationary_power)
+    l , r , half_max = calculateFWHM(power)
     fwhm = times[r] - times[l]
     plt.hlines(half_max , times[l] , times[r] , color = "red" , label=f"FWHM = {fwhm:.2e}")
     plt.legend()
