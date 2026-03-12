@@ -96,6 +96,8 @@ def diffusion(n_photons):
     photons_left = n_photons
     current_difusion = 0
     in_photons_z = np.zeros(shape=(n_photons,))
+    in_photons_costheta = np.ones(shape=n_photons,)
+    in_photons_phi = np.zeros(shape=(n_photons,))
 
     while photons_left > 0 :
         r_uniform_samples = np.random.uniform(low = 0 , high=1 , size = photons_left)
@@ -109,22 +111,32 @@ def diffusion(n_photons):
 
         phi_samples = np.random.uniform(low=0 , high=2*np.pi , size = photons_left)
         
-
         z_positions = np.multiply(r_samples,costheta_samples)
 
         z_positions = z_positions + in_photons_z
 
         mask_z_is_out = (z_positions < 0) | (z_positions > L)
         if sum(mask_z_is_out) != 0:
-            out_photons = np.vstack([z_positions[mask_z_is_out] , costheta_samples[mask_z_is_out],
+            old_x_positions , old_y_positions = spherical_to_cartesian(in_photons_z[mask_z_is_out] , 
+                                                                       in_photons_costheta[mask_z_is_out] , 
+                                                                       in_photons_phi[mask_z_is_out])
+            out_photons = np.vstack([z_positions[mask_z_is_out] , 
+                                    costheta_samples[mask_z_is_out],
                                     phi_samples[mask_z_is_out]]).T
             
             curr_list = list(map(lambda x: Photon(x[0] , x[1] , x[2]),out_photons))
-            for p in curr_list:
-                p.current_diffusion = current_difusion
+            for i in range(len(curr_list)):
+                curr_list[i].current_diffusion = current_difusion
+                curr_list[i].x += old_x_positions[i]
+                curr_list[i].y += old_y_positions[i]
+
             photon_list.extend(curr_list)
 
-        in_photons_z = z_positions[~mask_z_is_out] 
+        in_photons_z = z_positions[~mask_z_is_out]
+        in_photons_costheta = costheta_samples[~mask_z_is_out]
+        in_photons_phi = phi_samples[~mask_z_is_out]
+
+
         photons_left = n_photons - len(photon_list)
         current_difusion = current_difusion + 1
 
@@ -148,6 +160,9 @@ y_positions = []
 x_positions_forward = []
 y_positions_forward = []
 
+x_positions_backward = []
+y_positions_backward = []
+
 
 
 for p in diffused_photons:
@@ -158,6 +173,8 @@ for p in diffused_photons:
     else:
         if p.z <= 0 :
             back_diffusion.append(p)
+            x_positions_backward.append(p.x)
+            y_positions_backward.append(p.y)
         elif p.z >= L:
             forward_diffusion.append(p)
             x_positions_forward.append(p.x)
@@ -170,10 +187,35 @@ print(f"Beer Lambert : {np.exp(-3):.2f}")
 print(f"Forward diffusion : {len(forward_diffusion)/len(diffused_photons):.2f}")
 print(f"Back diffusion : {len(back_diffusion)/len(diffused_photons):.2f}")
 
-fig , axs = plt.subplots(2)
+fig , axs = plt.subplots(2,2)
 
-axs[0].hist(x_positions_forward , bins = 100 , label = "x")
-axs[1].hist(y_positions_forward , bins = 100 , label = "y")
+axs[0][0].hist(x_positions_forward , bins = 100 , label = "x forward")
+axs[0][1].hist(y_positions_forward , bins = 100 , label = "y forward")
+
+axs[1][0].hist(x_positions_backward , bins = 100 , label = "x backwards")
+axs[1][1].hist(y_positions_backward , bins = 100 , label = "y backwards")
+
+plt.legend()
 plt.show()
+
+min = -5
+max = 5
+
+plt.hist2d(x_positions_backward, y_positions_backward, bins=200, range=[[min, max], [min, max]])
+plt.xlim(min, max)
+plt.ylim(min, max)
+plt.xlabel("x")
+plt.ylabel("y")
+plt.show()
+
+min = -10
+max = 10
+plt.hist2d(x_positions_forward, y_positions_forward, bins=200, range=[[min, max], [min, max]])
+plt.xlim(min, max)
+plt.ylim(min, max)
+plt.xlabel("x")
+plt.ylabel("y")
+plt.show()
+
 
 
