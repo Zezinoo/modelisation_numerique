@@ -137,13 +137,22 @@ def diffusion(n_photons):
 
 
 
-diffused_photons = diffusion(10000)
+diffused_photons = diffusion(100000)
 
 no_diffusion = []
 back_diffusion = []
 forward_diffusion = []
+x_positions = []
+y_positions = []
+
+x_positions_forward = []
+y_positions_forward = []
+
+
 
 for p in diffused_photons:
+    x_positions.append(p.x)
+    y_positions.append(p.y)
     if p.current_diffusion == 0:
         no_diffusion.append(p)
     else:
@@ -151,6 +160,8 @@ for p in diffused_photons:
             back_diffusion.append(p)
         elif p.z >= L:
             forward_diffusion.append(p)
+            x_positions_forward.append(p.x)
+            y_positions_forward.append(p.y)
         else:
             raise ValueError("forcas malignas")
 
@@ -159,5 +170,10 @@ print(f"Beer Lambert : {np.exp(-3):.2f}")
 print(f"Forward diffusion : {len(forward_diffusion)/len(diffused_photons):.2f}")
 print(f"Back diffusion : {len(back_diffusion)/len(diffused_photons):.2f}")
 
+fig , axs = plt.subplots(2)
+
+axs[0].hist(x_positions_forward , bins = 100 , label = "x")
+axs[1].hist(y_positions_forward , bins = 100 , label = "y")
+plt.show()
 
 
