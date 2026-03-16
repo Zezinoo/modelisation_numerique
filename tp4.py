@@ -182,10 +182,10 @@ for p in diffused_photons:
         else:
             raise ValueError("forcas malignas")
 
-print(f"No diffusion : {len(no_diffusion)/len(diffused_photons):.2f}")
-print(f"Beer Lambert : {np.exp(-3):.2f}")
-print(f"Forward diffusion : {len(forward_diffusion)/len(diffused_photons):.2f}")
-print(f"Back diffusion : {len(back_diffusion)/len(diffused_photons):.2f}")
+print(f"No diffusion : {len(no_diffusion)/len(diffused_photons):.3f}")
+print(f"Beer Lambert : {np.exp(-3):.3f}")
+print(f"Forward diffusion : {len(forward_diffusion)/len(diffused_photons):.3f}")
+print(f"Back diffusion : {len(back_diffusion)/len(diffused_photons):.3f}")
 
 fig , axs = plt.subplots(2,2)
 
@@ -195,13 +195,15 @@ axs[0][1].hist(y_positions_forward , bins = 100 , label = "y forward")
 axs[1][0].hist(x_positions_backward , bins = 100 , label = "x backwards")
 axs[1][1].hist(y_positions_backward , bins = 100 , label = "y backwards")
 
-plt.legend()
+for ax in axs.flat:
+    ax.legend()
 plt.show()
 
 min = -5
 max = 5
 
 plt.hist2d(x_positions_backward, y_positions_backward, bins=200, range=[[min, max], [min, max]])
+plt.title("backwards difusion")
 plt.xlim(min, max)
 plt.ylim(min, max)
 plt.xlabel("x")
@@ -211,6 +213,7 @@ plt.show()
 min = -10
 max = 10
 plt.hist2d(x_positions_forward, y_positions_forward, bins=200, range=[[min, max], [min, max]])
+plt.title("forward difusion")
 plt.xlim(min, max)
 plt.ylim(min, max)
 plt.xlabel("x")
