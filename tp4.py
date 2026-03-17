@@ -92,49 +92,65 @@ def spherical_to_cartesian(r,costheta,phi):
 
 
 def diffusion(n_photons):
+    # in_photons are photons still in the cavity
+
     photon_list = []
     photons_left = n_photons
     current_difusion = 0
+
+    # they are initialised like this because at first the photons always go straight (perfectly colimated beam)
     in_photons_z = np.zeros(shape=(n_photons,))
-    in_photons_costheta = np.ones(shape=n_photons,)
-    in_photons_phi = np.zeros(shape=(n_photons,))
+    in_photons_x = np.zeros(shape=n_photons,)
+    in_photons_y = np.zeros(shape=(n_photons,))
 
     while photons_left > 0 :
+        # Samples the radial distance from the current point
         r_uniform_samples = np.random.uniform(low = 0 , high=1 , size = photons_left)
         r_samples = inverse_ZCDF(r_uniform_samples)
 
         if current_difusion == 0:
+            #If at first diffusion , theta = 0
             costheta_samples = np.ones_like(r_samples)
         else:
+            # Else, theta is sampled
             costheta_uniform_samples = np.random.uniform(low = 0 , high = 1 , size = photons_left )
             costheta_samples = inverse_costhetaCDF(costheta_uniform_samples)
 
         phi_samples = np.random.uniform(low=0 , high=2*np.pi , size = photons_left)
         
+        # Transfom r positions into z positions
         z_positions = np.multiply(r_samples,costheta_samples)
+        x_positions , y_positions = spherical_to_cartesian(r_samples , costheta_samples , phi_samples)
 
-        z_positions = z_positions + in_photons_z
 
+        z_positions += in_photons_z
         mask_z_is_out = (z_positions < 0) | (z_positions > L)
+
+
+        
+
         if sum(mask_z_is_out) != 0:
-            old_x_positions , old_y_positions = spherical_to_cartesian(in_photons_z[mask_z_is_out] , 
-                                                                       in_photons_costheta[mask_z_is_out] , 
-                                                                       in_photons_phi[mask_z_is_out])
+            old_x_positions  = in_photons_x[mask_z_is_out]
+            old_y_positions = in_photons_y[mask_z_is_out]
+
             out_photons = np.vstack([z_positions[mask_z_is_out] , 
                                     costheta_samples[mask_z_is_out],
                                     phi_samples[mask_z_is_out]]).T
             
             curr_list = list(map(lambda x: Photon(x[0] , x[1] , x[2]),out_photons))
+            
             for i in range(len(curr_list)):
                 curr_list[i].current_diffusion = current_difusion
                 curr_list[i].x += old_x_positions[i]
                 curr_list[i].y += old_y_positions[i]
 
             photon_list.extend(curr_list)
+        
 
+        # Tracks x,y,z positions of photons still in cavity
         in_photons_z = z_positions[~mask_z_is_out]
-        in_photons_costheta = costheta_samples[~mask_z_is_out]
-        in_photons_phi = phi_samples[~mask_z_is_out]
+        in_photons_x = in_photons_x[~mask_z_is_out] +  x_positions[~mask_z_is_out]
+        in_photons_y = in_photons_y[~mask_z_is_out] +  y_positions[~mask_z_is_out]
 
 
         photons_left = n_photons - len(photon_list)
