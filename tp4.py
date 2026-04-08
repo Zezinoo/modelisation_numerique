@@ -123,13 +123,13 @@ def diffusion(n_photons):
         x_positions , y_positions = spherical_to_cartesian(r_samples , costheta_samples , phi_samples)
 
 
-        z_positions += in_photons_z
+        z_positions += in_photons_z # sum old positions of photons already in cavity
         mask_z_is_out = (z_positions < 0) | (z_positions > L)
 
 
         
 
-        if sum(mask_z_is_out) != 0:
+        if sum(mask_z_is_out) != 0: # if there are any photons out
             old_x_positions  = in_photons_x[mask_z_is_out]
             old_y_positions = in_photons_y[mask_z_is_out]
 

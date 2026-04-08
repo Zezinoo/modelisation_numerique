@@ -91,7 +91,7 @@ def EulerLaser(P940, dt, tmax):
     xn = 0 # N2 starts at 0
     while t < tmax:
         xn1 = xn + dt*f1(xn , yn , flux940)
-        yn1 = yn + dt*f2(xn1 , yn , flux940)
+        yn1 = yn + dt*f2(xn , yn , flux940)
         xn = xn1
         yn = yn1
         t = t + dt

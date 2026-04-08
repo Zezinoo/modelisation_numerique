@@ -59,7 +59,7 @@ class Exercice():
                 x_k = (a+b)/2
                 points.append(x_k)
                 counter = counter + 1
-                if counter > 1e4:
+                if counter > 1e3:
                     raise ValueError(f"Max iterations reached, non converging for parameters chosen : x_k = {x_k}")
             return points
 
@@ -303,11 +303,11 @@ def partie_2(e):
     I = trapeze(f , a , b , list(f.keys())) # V*s
     print(I)
 
-    # Integral exacte int_0^inf I0*exp(-t/tau) dt = I0/-tau[0-1] = Io/tau -> tau = I0/Integral
+    # Integral exacte int_0^inf I0*exp(-t/tau) dt = I0*-tau[0-1] = Io/tau -> tau = Integral/I0
 
     tau = I/f.get(0)
 
-    print(tau)
+    print(f'tau {tau}')
 
 def partie3(e):
     data = np.array([
