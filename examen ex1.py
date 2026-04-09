@@ -25,6 +25,7 @@ def Euler_pop(N,K,R,y0,tmax):
     dt = tmax/N
     pops = []
     yn = y0
+    pops.append(y0)
     counter = 0
     while counter < N:
         yn1 = yn + dt*f_euler(R,K,yn)
@@ -38,6 +39,7 @@ def Euler_pop(N,K,R,y0,tmax):
 def Euler_pop_modifie(N,K,R,y0,tmax):
     dt = tmax/N
     pops = []
+    pops.append(y0)
     yn = y0
     counter = 0
     while counter < N:
@@ -57,7 +59,7 @@ tmax = 100
 N = 100
 # Partie 1
 
-times = np.linspace(0,tmax,N)
+times = np.linspace(0,tmax,N+1)
 
 pops = Euler_pop(N,K,R,y0,tmax)
 

@@ -37,7 +37,7 @@ plt.legend()
 plt.show()
 
 plt.plot(xs , h_prime(xs) , label = "h(x) prime")
-plt.axis([a , b,-1000,5])
+plt.axis([a , b,-1e3,5])
 plt.grid(True)
 
 plt.legend()
@@ -55,7 +55,7 @@ def NR(f,g,x0,x1,x2,epsilon=1e-12):
         return g(x) - f(x)
     # On cherche le 0 de la fonction h, que donnera les points dintersection
     counter = 0
-    def h_prime(x,pas=1e-13):
+    def h_prime(x,pas=1e-14):
         return (h(x+pas) - h(x))/pas
     
     diff = 1
