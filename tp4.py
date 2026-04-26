@@ -2,239 +2,235 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
+# Constants
+alpha = 0.5  # cm-1
+L = 6  # cm
+N_PHOTONS = 100_000
 
 
+# Questions
 
-#Constants
-alpha = 0.5 #cm-1
-L = 6 #cm
-
-
-
-#Questions
-
-#1
+# 1
 """
-If a Z is a random variable following an exponential pdf
+If Z is the random propagation length before an interaction, it follows an
+exponential pdf:
 
-Z(z) = lambda*exp(-lambda*z)
+f_Z(z) = alpha * exp(-alpha*z)
 
-The CDF (Fonction de Repartition) is then given by 
+The CDF is:
 
-FZ(z) = integral_{-inf}^{z}z(u)du = lambda/(-lambda)[exp(-lambda*u)]_{-inf}^{z}
-FZ(z) = (-1)*[exp(-lambda*z) - 1] = 1 - [exp(-lambda*z)
+F_Z(z) = integral_0^z alpha * exp(-alpha*u) du
+       = 1 - exp(-alpha*z)
 
-The sampling rate lambda can be taken as the linear coefficient loss alpha
+This is the same law as Beer-Lambert attenuation:
 
-Another way to see it
-
-The transmited power to a position M is homogenous to the power that is transmitted to that position
-over the total incident power
-
-P(Z>M) = Transmitted/Incident = exp(-alpha*M) , then the pdf is found by derivating this
-
+P(Z > z) = exp(-alpha*z)
 """
-#2
+
+# 2
 """
-FZ(z) = 1 - [exp(-lambda*z) -> ln(1 - FZ) = -lambda*z -> z = -ln(1 - FZ)/lambda = FZ^{-1}
+Inverse transform sampling:
 
-By the same sampling law that we saw earlier in the Monte Carlo TP, tp2, we know that if a random variable Z follows
-a certain pdf , then a sample of Z can be found as : 
+u = F_Z(z) = 1 - exp(-alpha*z)
+exp(-alpha*z) = 1 - u
+z = -ln(1 - u) / alpha
 
-Z_i = FZ^{-1}(U_i)
+So if U follows a uniform law on [0, 1], then
 
-Where U_i is a sample from a uniform law with 0,1 hi lo
+Z = F_Z^{-1}(U)
 
+follows the exponential law.
 """
-#4
+
+# 4
 """
-We do the integral of the solid angle from theta from 0 to pi/2
+For isotropic diffusion, the solid angle element is:
 
-Delta Omega = 2pi * integral_{0}^{theta}sin(t)dt = 2pi * [-cos(t)]_{0}^{theta} = 2pi * [1 - cos(theta)]
+dOmega = sin(theta) dtheta dphi
 
-Donc
+After integrating over phi:
 
-FT = (1/2) * [1 - cos(theta)]
+F(theta) = (1 / 2) * integral_0^theta sin(t) dt
+         = (1 / 2) * (1 - cos(theta))
 
-cos(theta) = 1 - 2FT = FT^(-1)
+Therefore:
 
+u = (1 / 2) * (1 - cos(theta))
+cos(theta) = 1 - 2u
 """
-class Photon :
-    def __init__(self , z , costheta , phi):
-        self.trajectory = []
+
+
+class Photon:
+    def __init__(self, x, y, z, costheta, phi, n_diffusions):
+        self.x = x
+        self.y = y
         self.z = z
         self.costheta = costheta
         self.phi = phi
-        self.x , self.y = spherical_to_cartesian(z,costheta,phi)
-        self.current_diffusion = None
+        self.current_diffusion = n_diffusions
 
-def ZCDF(u):
-    return 1 - np.exp(-alpha*u)
+
+def ZCDF(z):
+    return 1 - np.exp(-alpha * z)
+
 
 def inverse_ZCDF(u):
-    return (-np.log(1 - u ))/alpha
+    return -np.log(1 - u) / alpha
 
-def thetaCDF(u):
-    return (1/2) * [1 - np.cos(u)]
+
+def thetaCDF(theta):
+    return 0.5 * (1 - np.cos(theta))
+
 
 def inverse_costhetaCDF(u):
-    return 1 - 2*u
+    return 1 - 2 * u
 
-def spherical_to_cartesian(r,costheta,phi):
-    theta = np.arccos(costheta)
-    sintheta = np.sin(theta)
 
-    x = r*sintheta*np.cos(phi)
-    y = r*sintheta*np.sin(phi)
+def spherical_to_cartesian(r, costheta, phi):
+    sintheta = np.sqrt(1 - costheta**2)
+    x = r * sintheta * np.cos(phi)
+    y = r * sintheta * np.sin(phi)
+    z = r * costheta
 
-    return x,y
-
+    return x, y, z
 
 
 def diffusion(n_photons):
-    # in_photons are photons still in the cavity
-
-    photon_list = []
+    exited_photons = []
     photons_left = n_photons
-    current_difusion = 0
+    n_diffusions = 0
 
-    # they are initialised like this because at first the photons always go straight (perfectly colimated beam)
-    in_photons_z = np.zeros(shape=(n_photons,))
-    in_photons_x = np.zeros(shape=n_photons,)
-    in_photons_y = np.zeros(shape=(n_photons,))
+    # Photons start at the entrance of the slab, in a perfectly collimated beam.
+    in_photons_x = np.zeros(n_photons)
+    in_photons_y = np.zeros(n_photons)
+    in_photons_z = np.zeros(n_photons)
 
-    while photons_left > 0 :
-        # Samples the radial distance from the current point
-        r_uniform_samples = np.random.uniform(low = 0 , high=1 , size = photons_left)
-        r_samples = inverse_ZCDF(r_uniform_samples)
+    while photons_left > 0:
+        r_samples = inverse_ZCDF(np.random.uniform(0, 1, photons_left))
 
-        if current_difusion == 0:
-            #If at first diffusion , theta = 0
-            costheta_samples = np.ones_like(r_samples)
+        if n_diffusions == 0:
+            costheta_samples = np.ones(photons_left)
         else:
-            # Else, theta is sampled
-            costheta_uniform_samples = np.random.uniform(low = 0 , high = 1 , size = photons_left )
-            costheta_samples = inverse_costhetaCDF(costheta_uniform_samples)
+            costheta_samples = inverse_costhetaCDF(
+                np.random.uniform(0, 1, photons_left)
+            )
 
-        phi_samples = np.random.uniform(low=0 , high=2*np.pi , size = photons_left)
-        
-        # Transfom r positions into z positions
-        z_positions = np.multiply(r_samples,costheta_samples)
-        x_positions , y_positions = spherical_to_cartesian(r_samples , costheta_samples , phi_samples)
+        phi_samples = np.random.uniform(0, 2 * np.pi, photons_left)
+        dx, dy, dz = spherical_to_cartesian(r_samples, costheta_samples, phi_samples)
 
+        next_x = in_photons_x + dx
+        next_y = in_photons_y + dy
+        next_z = in_photons_z + dz
 
-        z_positions += in_photons_z # sum old positions of photons already in cavity
-        mask_z_is_out = (z_positions < 0) | (z_positions > L)
+        mask_out = (next_z <= 0) | (next_z >= L)
 
+        if np.any(mask_out):
+            old_x = in_photons_x[mask_out]
+            old_y = in_photons_y[mask_out]
+            old_z = in_photons_z[mask_out]
+            out_costheta = costheta_samples[mask_out]
+            out_phi = phi_samples[mask_out]
 
-        
+            boundaries = np.where(next_z[mask_out] >= L, L, 0)
 
-        if sum(mask_z_is_out) != 0: # if there are any photons out
-            old_x_positions  = in_photons_x[mask_z_is_out]
-            old_y_positions = in_photons_y[mask_z_is_out]
+            # Stop at the slab surface instead of keeping the overshoot distance.
+            distances_to_boundary = (boundaries - old_z) / out_costheta
+            exit_dx, exit_dy, _ = spherical_to_cartesian(
+                distances_to_boundary, out_costheta, out_phi
+            )
 
-            out_photons = np.vstack([z_positions[mask_z_is_out] , 
-                                    costheta_samples[mask_z_is_out],
-                                    phi_samples[mask_z_is_out]]).T
-            
-            curr_list = list(map(lambda x: Photon(x[0] , x[1] , x[2]),out_photons))
-            
-            for i in range(len(curr_list)):
-                curr_list[i].current_diffusion = current_difusion
-                curr_list[i].x += old_x_positions[i]
-                curr_list[i].y += old_y_positions[i]
+            for x, y, z, costheta, phi in zip(
+                old_x + exit_dx,
+                old_y + exit_dy,
+                boundaries,
+                out_costheta,
+                out_phi,
+            ):
+                exited_photons.append(
+                    Photon(x, y, z, costheta, phi, n_diffusions)
+                )
 
-            photon_list.extend(curr_list)
-        
+        in_photons_x = next_x[~mask_out]
+        in_photons_y = next_y[~mask_out]
+        in_photons_z = next_z[~mask_out]
 
-        # Tracks x,y,z positions of photons still in cavity
-        in_photons_z = z_positions[~mask_z_is_out]
-        in_photons_x = in_photons_x[~mask_z_is_out] +  x_positions[~mask_z_is_out]
-        in_photons_y = in_photons_y[~mask_z_is_out] +  y_positions[~mask_z_is_out]
+        photons_left = len(in_photons_z)
+        n_diffusions += 1
 
-
-        photons_left = n_photons - len(photon_list)
-        current_difusion = current_difusion + 1
-
-
-    return photon_list
-
-        
-
-    
+    return exited_photons
 
 
+def plot_results(forward_photons, backward_photons):
+    x_forward = [p.x for p in forward_photons]
+    y_forward = [p.y for p in forward_photons]
+    x_backward = [p.x for p in backward_photons]
+    y_backward = [p.y for p in backward_photons]
 
-diffused_photons = diffusion(100000)
+    fig, axs = plt.subplots(2, 2)
 
-no_diffusion = []
-back_diffusion = []
-forward_diffusion = []
-x_positions = []
-y_positions = []
+    axs[0][0].hist(x_forward, bins=100, label="x forward")
+    axs[0][1].hist(y_forward, bins=100, label="y forward")
+    axs[1][0].hist(x_backward, bins=100, label="x backward")
+    axs[1][1].hist(y_backward, bins=100, label="y backward")
 
-x_positions_forward = []
-y_positions_forward = []
+    for ax in axs.flat:
+        ax.legend()
 
-x_positions_backward = []
-y_positions_backward = []
+    plt.show()
+
+    plot_min = -5
+    plot_max = 5
+    plt.hist2d(
+        x_backward,
+        y_backward,
+        bins=200,
+        range=[[plot_min, plot_max], [plot_min, plot_max]],
+    )
+    plt.title("Backward diffusion")
+    plt.xlim(plot_min, plot_max)
+    plt.ylim(plot_min, plot_max)
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()
+
+    plot_min = -10
+    plot_max = 10
+    plt.hist2d(
+        x_forward,
+        y_forward,
+        bins=200,
+        range=[[plot_min, plot_max], [plot_min, plot_max]],
+    )
+    plt.title("Forward diffusion")
+    plt.xlim(plot_min, plot_max)
+    plt.ylim(plot_min, plot_max)
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()
 
 
+if __name__ == "__main__":
+    diffused_photons = diffusion(N_PHOTONS)
 
-for p in diffused_photons:
-    x_positions.append(p.x)
-    y_positions.append(p.y)
-    if p.current_diffusion == 0:
-        no_diffusion.append(p)
-    else:
-        if p.z <= 0 :
-            back_diffusion.append(p)
-            x_positions_backward.append(p.x)
-            y_positions_backward.append(p.y)
-        elif p.z >= L:
-            forward_diffusion.append(p)
-            x_positions_forward.append(p.x)
-            y_positions_forward.append(p.y)
+    no_diffusion = []
+    back_diffusion = []
+    forward_diffusion = []
+
+    for photon in diffused_photons:
+        if photon.current_diffusion == 0:
+            no_diffusion.append(photon)
+        elif photon.z <= 0:
+            back_diffusion.append(photon)
+        elif photon.z >= L:
+            forward_diffusion.append(photon)
         else:
-            raise ValueError("forcas malignas")
+            raise ValueError("Photon did not leave the slab")
 
-print(f"No diffusion : {len(no_diffusion)/len(diffused_photons):.3f}")
-print(f"Beer Lambert : {np.exp(-3):.3f}")
-print(f"Forward diffusion : {len(forward_diffusion)/len(diffused_photons):.3f}")
-print(f"Back diffusion : {len(back_diffusion)/len(diffused_photons):.3f}")
+    total = len(diffused_photons)
 
-fig , axs = plt.subplots(2,2)
+    print(f"No diffusion : {len(no_diffusion) / total:.3f}")
+    print(f"Beer Lambert : {np.exp(-alpha * L):.3f}")
+    print(f"Forward diffusion : {len(forward_diffusion) / total:.3f}")
+    print(f"Back diffusion : {len(back_diffusion) / total:.3f}")
 
-axs[0][0].hist(x_positions_forward , bins = 100 , label = "x forward")
-axs[0][1].hist(y_positions_forward , bins = 100 , label = "y forward")
-
-axs[1][0].hist(x_positions_backward , bins = 100 , label = "x backwards")
-axs[1][1].hist(y_positions_backward , bins = 100 , label = "y backwards")
-
-for ax in axs.flat:
-    ax.legend()
-plt.show()
-
-min = -5
-max = 5
-
-plt.hist2d(x_positions_backward, y_positions_backward, bins=200, range=[[min, max], [min, max]])
-plt.title("backwards difusion")
-plt.xlim(min, max)
-plt.ylim(min, max)
-plt.xlabel("x")
-plt.ylabel("y")
-plt.show()
-
-min = -10
-max = 10
-plt.hist2d(x_positions_forward, y_positions_forward, bins=200, range=[[min, max], [min, max]])
-plt.title("forward difusion")
-plt.xlim(min, max)
-plt.ylim(min, max)
-plt.xlabel("x")
-plt.ylabel("y")
-plt.show()
-
-
-
+    plot_results(forward_diffusion, back_diffusion)
